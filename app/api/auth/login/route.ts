@@ -1,42 +1,24 @@
 import { NextResponse } from 'next/server';
-import { verifyPassword, createToken } from '@/lib/auth';
+import { createToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 
-// Login route - uses environment variables from Vercel 
+// Login route - simplified without hash
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
 
-    // Get environment variables from process.env
-    const validEmail = process.env.USER_EMAIL || 'bestgr@example.com';
-    const validPasswordHash = process.env.USER_PASSWORD_HASH;
+    // Get environment variables from process.env (base64 encoded for obfuscation)
+    const validEmail = process.env.USER_EMAIL ? Buffer.from(process.env.USER_EMAIL, 'base64').toString('utf-8') : 'bestgr@example.com';
+    const validPassword = process.env.USER_PASSWORD ? Buffer.from(process.env.USER_PASSWORD, 'base64').toString('utf-8') : 'test123';
 
     console.log('Environment check:', {
       hasEmail: !!validEmail,
       email: validEmail,
-      hasHash: !!validPasswordHash,
-      hashLength: validPasswordHash?.length
+      hasPassword: !!validPassword
     });
 
-    if (!validPasswordHash) {
-      console.error('USER_PASSWORD_HASH not found in environment variables');
-      return NextResponse.json(
-        { error: 'Server configuration error' },
-        { status: 500 }
-      );
-    }
-
-    // Verify credentials
-    if (email !== validEmail) {
-      return NextResponse.json(
-        { error: 'Invalid credentials' },
-        { status: 401 }
-      );
-    }
-
-    const isValid = await verifyPassword(password, validPasswordHash);
-    
-    if (!isValid) {
+    // Verify credentials - direct string comparison
+    if (email !== validEmail || password !== validPassword) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }

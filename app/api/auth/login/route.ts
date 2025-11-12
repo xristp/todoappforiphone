@@ -14,7 +14,11 @@ export async function POST(request: Request) {
     console.log('Environment check:', {
       hasEmail: !!validEmail,
       email: validEmail,
-      hasPassword: !!validPassword
+      hasPassword: !!validPassword,
+      receivedEmail: email,
+      receivedPassword: password,
+      emailMatch: email === validEmail,
+      passwordMatch: password === validPassword
     });
 
     // Verify credentials - direct string comparison

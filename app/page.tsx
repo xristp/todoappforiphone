@@ -1,24 +1,41 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Lock } from 'lucide-react';
-import { auth, googleProvider } from '@/lib/firebaseClient';
-import { signInWithPopup } from 'firebase/auth';
 
 export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [firebaseReady, setFirebaseReady] = useState(false);
   const router = useRouter();
 
+  useEffect(() => {
+    // Dynamically import Firebase only on client side
+    setFirebaseReady(true);
+  }, []);
+
   const handleGoogleSignIn = async () => {
+    if (!firebaseReady) {
+      setError('Firebase is still loading...');
+      return;
+    }
+
     setError('');
     setLoading(true);
 
     try {
+      // Dynamic import to avoid SSR issues
+      const firebaseModule = await import('@/lib/firebaseClient');
+      const { signInWithPopup } = await import('firebase/auth');
+
+      if (!firebaseModule.auth || !firebaseModule.googleProvider) {
+        throw new Error('Firebase not configured');
+      }
+
       // Sign in with Google popup
-      const result = await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(firebaseModule.auth, firebaseModule.googleProvider);
       const idToken = await result.user.getIdToken();
 
       // Send token to our API to create session

@@ -11,9 +11,20 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase (only once)
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+// Validate config before initializing
+const isConfigValid = Object.values(firebaseConfig).every(value => value && value !== 'undefined');
 
-// Export auth and Google provider
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
+// Initialize Firebase (only once and only if config is valid)
+let app;
+let auth;
+let googleProvider;
+
+if (typeof window !== 'undefined' && isConfigValid) {
+  // Only initialize on client side with valid config
+  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+  auth = getAuth(app);
+  googleProvider = new GoogleAuthProvider();
+}
+
+// Export with fallbacks
+export { auth, googleProvider };

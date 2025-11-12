@@ -5,11 +5,11 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'fallback-secret-key'
 );
 
-const ALLOWED_EMAIL = process.env.ALLOWED_EMAIL || '';
+const ALLOWED_EMAIL = (process.env.ALLOWED_EMAIL || '').trim().toLowerCase();
 
 // JWT token functions for session management
 export async function createToken(email: string): Promise<string> {
-  return await new SignJWT({ email })
+  return await new SignJWT({ email: email.trim().toLowerCase() })
     .setProtectedHeader({ alg: 'HS256' })
     .setExpirationTime('90d')
     .setIssuedAt()
@@ -57,7 +57,7 @@ export async function requireAuth() {
   }
   
   // Verify email is whitelisted
-  const email = session.email as string;
+  const email = (session.email as string).trim().toLowerCase();
   if (email !== ALLOWED_EMAIL) {
     console.error(`Unauthorized access attempt from: ${email}`);
     throw new Error('Unauthorized: Email not whitelisted');

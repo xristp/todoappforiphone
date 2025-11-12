@@ -6,7 +6,7 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'fallback-secret-key'
 );
 
-const ALLOWED_EMAIL = process.env.ALLOWED_EMAIL || '';
+const ALLOWED_EMAIL = (process.env.ALLOWED_EMAIL || '').trim().toLowerCase();
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -21,7 +21,7 @@ export async function middleware(request: NextRequest) {
 
     try {
       const verified = await jwtVerify(token.value, JWT_SECRET);
-      const email = verified.payload.email as string;
+      const email = (verified.payload.email as string).trim().toLowerCase();
       
       // Verify email matches allowed email
       if (email !== ALLOWED_EMAIL) {

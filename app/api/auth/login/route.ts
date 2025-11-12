@@ -4,15 +4,26 @@ import { cookies } from 'next/headers';
 import { getAuth } from 'firebase-admin/auth';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 
-// Initialize Firebase Admin
-if (getApps().length === 0) {
-  initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
+// Initialize Firebase Admin lazily
+function getFirebaseAdmin() {
+  if (getApps().length === 0) {
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
+    if (!projectId || !clientEmail || !privateKey) {
+      throw new Error('Missing Firebase Admin credentials');
+    }
+
+    initializeApp({
+      credential: cert({
+        projectId,
+        clientEmail,
+        privateKey,
+      }),
+    });
+  }
+  return getAuth();
 }
 
 // Simple login with email/password verification via Firebase token
@@ -28,7 +39,8 @@ export async function POST(request: Request) {
     }
 
     // Verify the Firebase ID token
-    const decodedToken = await getAuth().verifyIdToken(idToken);
+    const auth = getFirebaseAdmin();
+    const decodedToken = await auth.verifyIdToken(idToken);
     const email = decodedToken.email;
 
     if (!email) {

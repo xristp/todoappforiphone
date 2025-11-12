@@ -17,6 +17,8 @@
     "bcryptjs": "^3.0.2",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
+    "firebase": "^12.5.0",
+    "firebase-admin": "^13.6.0",
     "framer-motion": "^12.23.22",
     "jose": "^6.1.0",
     "jsonwebtoken": "^9.0.2",

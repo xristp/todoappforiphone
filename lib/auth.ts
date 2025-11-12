@@ -1,20 +1,13 @@
-import bcrypt from 'bcryptjs';
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
-import { NextRequest } from 'next/server';
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'fallback-secret-key'
 );
 
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 10);
-}
+const ALLOWED_EMAIL = 'polipaxrhstos@gmail.com';
 
-export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
-  return bcrypt.compare(password, hashedPassword);
-}
-
+// JWT token functions for session management
 export async function createToken(email: string): Promise<string> {
   return await new SignJWT({ email })
     .setProtectedHeader({ alg: 'HS256' })
@@ -61,6 +54,13 @@ export async function requireAuth() {
   
   if (!session) {
     throw new Error('Unauthorized');
+  }
+  
+  // Verify email is whitelisted
+  const email = session.email as string;
+  if (email !== ALLOWED_EMAIL) {
+    console.error(`Unauthorized access attempt from: ${email}`);
+    throw new Error('Unauthorized: Email not whitelisted');
   }
   
   return session;

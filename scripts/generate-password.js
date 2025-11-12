@@ -1,9 +1,6 @@
-const bcrypt = require('bcryptjs');
+// DEPRECATED: This script is no longer needed
+// Authentication is now handled by Firebase Google Sign-in
+// Only polipaxrhstos@gmail.com is allowed to access the app
 
-// Change this to your desired password
-const password = 'bestgr';
-
-const hash = bcrypt.hashSync(password, 10);
-console.log('\nYour hashed password:');
-console.log(hash);
-console.log('\nAdd this to your .env.local file as USER_PASSWORD_HASH');
+console.log('This script is deprecated. We now use Firebase Google Authentication.');
+console.log('Allowed email: polipaxrhstos@gmail.com');

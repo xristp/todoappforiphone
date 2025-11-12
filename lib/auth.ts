@@ -1,0 +1,67 @@
+import bcrypt from 'bcryptjs';
+import { SignJWT, jwtVerify } from 'jose';
+import { cookies } from 'next/headers';
+import { NextRequest } from 'next/server';
+
+const JWT_SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || 'fallback-secret-key'
+);
+
+export async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 10);
+}
+
+export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
+  return bcrypt.compare(password, hashedPassword);
+}
+
+export async function createToken(email: string): Promise<string> {
+  return await new SignJWT({ email })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setExpirationTime('90d')
+    .setIssuedAt()
+    .sign(JWT_SECRET);
+}
+
+export async function verifyToken(token: string) {
+  try {
+    const verified = await jwtVerify(token, JWT_SECRET);
+    return verified.payload;
+  } catch (err) {
+    return null;
+  }
+}
+
+export async function getSession() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('auth-token');
+  
+  console.log('getSession - cookie check:', {
+    hasToken: !!token,
+    tokenLength: token?.value?.length || 0
+  });
+  
+  if (!token) return null;
+  
+  const verified = await verifyToken(token.value);
+  console.log('getSession - token verification:', {
+    isValid: !!verified
+  });
+  
+  return verified;
+}
+
+export async function requireAuth() {
+  const session = await getSession();
+  
+  console.log('requireAuth - session check:', {
+    hasSession: !!session,
+    sessionData: session ? { email: session.email } : null
+  });
+  
+  if (!session) {
+    throw new Error('Unauthorized');
+  }
+  
+  return session;
+}

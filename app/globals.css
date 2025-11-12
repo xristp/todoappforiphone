@@ -178,6 +178,21 @@ body {
   color: var(--text-primary);
 }
 
+/* iOS notch / safe-area handling */
+html, body, #__next {
+  background-color: var(--bg-primary);
+  height: 100%;
+}
+
+/* Let content extend under the status bar on iOS when viewport-fit=cover is used.
+   Use safe-area inset padding where you need spacing from the notch. */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 /* Claude-style Typography */
 h1, h2, h3, h4, h5, h6 {
   font-weight: 600;

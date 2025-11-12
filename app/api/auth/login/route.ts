@@ -26,7 +26,7 @@ function getFirebaseAdmin() {
   return getAuth();
 }
 
-// Simple login with email/password verification via Firebase token
+// Login with Firebase Google OAuth token verification
 export async function POST(request: Request) {
   try {
     const { idToken } = await request.json();

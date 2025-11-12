@@ -1,48 +1,18 @@
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
-import { encrypt, decrypt } from '@/lib/crypto';
-import { promises as fs } from 'fs';
-import path from 'path';
-import { Category } from '@/types';
-
-// Use /tmp in production (Vercel), local data directory in development
-const DATA_DIR = process.env.NODE_ENV === 'production' 
-  ? '/tmp/data'
-  : path.join(process.cwd(), 'data');
-const DATA_FILE = path.join(DATA_DIR, 'categories.json');
-
-async function ensureDataDir() {
-  try {
-    await fs.access(DATA_DIR);
-  } catch {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-  }
-}
-
-async function readCategories(): Promise<Category[]> {
-  try {
-    await ensureDataDir();
-    const encryptedData = await fs.readFile(DATA_FILE, 'utf-8');
-    const decryptedData = decrypt(encryptedData);
-    return JSON.parse(decryptedData);
-  } catch {
-    return [];
-  }
-}
-
-async function writeCategories(categories: Category[]) {
-  await ensureDataDir();
-  const data = JSON.stringify(categories);
-  const encryptedData = encrypt(data);
-  await fs.writeFile(DATA_FILE, encryptedData, 'utf-8');
-}
+import { getCategories, createCategory, deleteCategory, ensureUser } from '@/lib/db';
 
 export async function GET() {
   try {
-    await requireAuth();
-    const categories = await readCategories();
+    const session = await requireAuth();
+    const userEmail = session.email as string;
+    
+    await ensureUser(userEmail);
+    const categories = await getCategories(userEmail);
+    
     return NextResponse.json(categories);
   } catch (error) {
+    console.error('GET /api/categories error:', error);
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 }
@@ -50,29 +20,26 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     console.log('POST /api/categories - Starting auth check');
-    console.log('Headers:', Object.fromEntries(request.headers.entries()));
     
-    await requireAuth();
+    const session = await requireAuth();
+    const userEmail = session.email as string;
     console.log('POST /api/categories - Auth successful');
     
+    await ensureUser(userEmail);
+    
     const body = await request.json();
-    const { name, description, color, icon } = body;
+    const { name, icon } = body;
 
-    console.log('POST body:', { name, description, color, icon });
+    console.log('POST body:', { name, icon });
 
-    const categories = await readCategories();
-    const newCategory: Category = {
+    const newCategory = {
       id: crypto.randomUUID(),
       name,
-      description,
       color: '#E97451', // Always use orange accent color
       icon: icon || '📝',
-      todos: [],
-      createdAt: new Date().toISOString(),
     };
 
-    categories.push(newCategory);
-    await writeCategories(categories);
+    await createCategory(userEmail, newCategory);
 
     console.log('POST /api/categories - Category created:', newCategory.name);
     return NextResponse.json(newCategory);
@@ -85,7 +52,9 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    await requireAuth();
+    const session = await requireAuth();
+    const userEmail = session.email as string;
+    
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -93,12 +62,11 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Category ID required' }, { status: 400 });
     }
 
-    const categories = await readCategories();
-    const filtered = categories.filter(cat => cat.id !== id);
-    await writeCategories(filtered);
+    await deleteCategory(userEmail, id);
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('DELETE /api/categories error:', error);
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 }

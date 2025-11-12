@@ -1,30 +1,25 @@
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
-import { encrypt, decrypt } from '@/lib/crypto';
-import { promises as fs } from 'fs';
-import path from 'path';
-import { Category, Todo } from '@/types';
+import { getTodos, createTodo, updateTodo, deleteTodo, ensureUser } from '@/lib/db';
 
-// Use /tmp in production (Vercel), local data directory in development
-const DATA_DIR = process.env.NODE_ENV === 'production' 
-  ? '/tmp/data'
-  : path.join(process.cwd(), 'data');
-const DATA_FILE = path.join(DATA_DIR, 'categories.json');
-
-async function readCategories(): Promise<Category[]> {
+// GET all todos for a category
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ categoryId: string }> }
+) {
   try {
-    const encryptedData = await fs.readFile(DATA_FILE, 'utf-8');
-    const decryptedData = decrypt(encryptedData);
-    return JSON.parse(decryptedData);
-  } catch {
-    return [];
-  }
-}
+    const session = await requireAuth();
+    const userEmail = session.email as string;
+    const { categoryId } = await params;
 
-async function writeCategories(categories: Category[]) {
-  const data = JSON.stringify(categories);
-  const encryptedData = encrypt(data);
-  await fs.writeFile(DATA_FILE, encryptedData, 'utf-8');
+    await ensureUser(userEmail);
+    const todos = await getTodos(userEmail, categoryId);
+
+    return NextResponse.json(todos);
+  } catch (error) {
+    console.error('GET /api/categories/[categoryId]/todos error:', error);
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 }
 
 export async function POST(
@@ -32,35 +27,27 @@ export async function POST(
   { params }: { params: Promise<{ categoryId: string }> }
 ) {
   try {
-    await requireAuth();
+    const session = await requireAuth();
+    const userEmail = session.email as string;
     const { categoryId } = await params;
-    const { text, notes, dueDate, dueTime, assignedTo } = await request.json();
+    const { title, notes, dueDate, priority } = await request.json();
 
-    const categories = await readCategories();
-    const category = categories.find(cat => cat.id === categoryId);
+    await ensureUser(userEmail);
 
-    if (!category) {
-      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
-    }
-
-    const newTodo: Todo = {
+    const newTodo = {
       id: crypto.randomUUID(),
-      text,
+      title,
       completed: false,
-      createdAt: new Date().toISOString(),
-      notes: notes || undefined,
-      dueDate: dueDate || undefined,
-      dueTime: dueTime || undefined,
-      assignedTo: assignedTo || undefined,
-      archived: false,
-      order: category.todos.length,
+      notes: notes || null,
+      dueDate: dueDate || null,
+      priority: priority || null,
     };
 
-    category.todos.push(newTodo);
-    await writeCategories(categories);
+    await createTodo(userEmail, categoryId, newTodo);
 
     return NextResponse.json(newTodo);
   } catch (error) {
+    console.error('POST /api/categories/[categoryId]/todos error:', error);
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 }
@@ -70,30 +57,27 @@ export async function PATCH(
   { params }: { params: Promise<{ categoryId: string }> }
 ) {
   try {
-    await requireAuth();
+    const session = await requireAuth();
+    const userEmail = session.email as string;
     const { categoryId } = await params;
-    const { todoId, completed, text, archived } = await request.json();
+    const { todoId, completed, title, notes, dueDate, priority } = await request.json();
 
-    const categories = await readCategories();
-    const category = categories.find(cat => cat.id === categoryId);
-
-    if (!category) {
-      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+    if (!todoId) {
+      return NextResponse.json({ error: 'Todo ID required' }, { status: 400 });
     }
 
-    const todo = category.todos.find(t => t.id === todoId);
-    if (!todo) {
-      return NextResponse.json({ error: 'Todo not found' }, { status: 404 });
-    }
+    const updates: any = {};
+    if (completed !== undefined) updates.completed = completed;
+    if (title !== undefined) updates.title = title;
+    if (notes !== undefined) updates.notes = notes;
+    if (dueDate !== undefined) updates.dueDate = dueDate;
+    if (priority !== undefined) updates.priority = priority;
 
-    if (completed !== undefined) todo.completed = completed;
-    if (text !== undefined) todo.text = text;
-    if (archived !== undefined) todo.archived = archived;
-    
-    await writeCategories(categories);
+    await updateTodo(userEmail, todoId, updates);
 
-    return NextResponse.json(todo);
+    return NextResponse.json({ success: true, updates });
   } catch (error) {
+    console.error('PATCH /api/categories/[categoryId]/todos error:', error);
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 }
@@ -103,7 +87,8 @@ export async function DELETE(
   { params }: { params: Promise<{ categoryId: string }> }
 ) {
   try {
-    await requireAuth();
+    const session = await requireAuth();
+    const userEmail = session.email as string;
     const { categoryId } = await params;
     const { searchParams } = new URL(request.url);
     const todoId = searchParams.get('todoId');
@@ -112,18 +97,11 @@ export async function DELETE(
       return NextResponse.json({ error: 'Todo ID required' }, { status: 400 });
     }
 
-    const categories = await readCategories();
-    const category = categories.find(cat => cat.id === categoryId);
-
-    if (!category) {
-      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
-    }
-
-    category.todos = category.todos.filter(t => t.id !== todoId);
-    await writeCategories(categories);
+    await deleteTodo(userEmail, todoId);
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('DELETE /api/categories/[categoryId]/todos error:', error);
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 }

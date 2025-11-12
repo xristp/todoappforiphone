@@ -5,14 +5,17 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { Category } from '@/types';
 
-const DATA_FILE = path.join(process.cwd(), 'data', 'categories.json');
+// Use /tmp in production (Vercel), local data directory in development
+const DATA_DIR = process.env.NODE_ENV === 'production' 
+  ? '/tmp/data'
+  : path.join(process.cwd(), 'data');
+const DATA_FILE = path.join(DATA_DIR, 'categories.json');
 
 async function ensureDataDir() {
-  const dataDir = path.join(process.cwd(), 'data');
   try {
-    await fs.access(dataDir);
+    await fs.access(DATA_DIR);
   } catch {
-    await fs.mkdir(dataDir, { recursive: true });
+    await fs.mkdir(DATA_DIR, { recursive: true });
   }
 }
 

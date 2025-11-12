@@ -5,7 +5,11 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { Category, Todo } from '@/types';
 
-const DATA_FILE = path.join(process.cwd(), 'data', 'categories.json');
+// Use /tmp in production (Vercel), local data directory in development
+const DATA_DIR = process.env.NODE_ENV === 'production' 
+  ? '/tmp/data'
+  : path.join(process.cwd(), 'data');
+const DATA_FILE = path.join(DATA_DIR, 'categories.json');
 
 async function readCategories(): Promise<Category[]> {
   try {

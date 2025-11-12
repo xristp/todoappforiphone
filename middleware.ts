@@ -6,7 +6,7 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'fallback-secret-key'
 );
 
-const ALLOWED_EMAIL = 'polipaxrhstos@gmail.com';
+const ALLOWED_EMAIL = process.env.ALLOWED_EMAIL || '';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

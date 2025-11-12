@@ -5,7 +5,7 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'fallback-secret-key'
 );
 
-const ALLOWED_EMAIL = 'polipaxrhstos@gmail.com';
+const ALLOWED_EMAIL = process.env.ALLOWED_EMAIL || '';
 
 // JWT token functions for session management
 export async function createToken(email: string): Promise<string> {

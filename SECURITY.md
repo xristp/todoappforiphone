@@ -8,7 +8,7 @@
 - Firebase handles all OAuth security
 
 ### 2. **Email Whitelist**
-Only `polipaxrhstos@gmail.com` is allowed access. This is enforced at multiple layers:
+Only the email specified in `ALLOWED_EMAIL` environment variable is allowed access. This is enforced at multiple layers:
 
 #### Layer 1: Login Route (`/api/auth/login`)
 - Verifies Firebase ID token
@@ -58,6 +58,8 @@ Only `polipaxrhstos@gmail.com` is allowed access. This is enforced at multiple l
 
 ### Vercel Production
 ```
+ALLOWED_EMAIL=your_email@gmail.com
+
 NEXT_PUBLIC_FIREBASE_API_KEY=...
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
@@ -84,7 +86,7 @@ ENCRYPTION_KEY=...
 ❌ **CSRF**: httpOnly cookies + sameSite protection
 
 ## Summary
-**Only `polipaxrhstos@gmail.com` can:**
+**Only the email in `ALLOWED_EMAIL` env var can:**
 1. Complete Google OAuth
 2. Pass login whitelist check
 3. Get a valid JWT session token

@@ -39,8 +39,8 @@ export async function POST(request: Request) {
     }
 
     // Whitelist check - only allow specific email
-    const allowedEmail = 'polipaxrhstos@gmail.com';
-    if (email !== allowedEmail) {
+    const allowedEmail = process.env.ALLOWED_EMAIL || '';
+    if (!allowedEmail || email !== allowedEmail) {
       console.log(`Unauthorized login attempt from: ${email}`);
       return NextResponse.json(
         { error: 'Unauthorized: This account is not allowed to access this application' },

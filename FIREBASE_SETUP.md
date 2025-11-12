@@ -29,6 +29,9 @@
 
 ### Local (.env.local)
 ```env
+# Allowed email for authentication
+ALLOWED_EMAIL=your_email@gmail.com
+
 # Firebase Client Config (from Step 3)
 NEXT_PUBLIC_FIREBASE_API_KEY=AIza...
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com

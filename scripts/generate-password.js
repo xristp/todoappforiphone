@@ -1,6 +1,6 @@
 // DEPRECATED: This script is no longer needed
 // Authentication is now handled by Firebase Google Sign-in
-// Only polipaxrhstos@gmail.com is allowed to access the app
+// Set ALLOWED_EMAIL environment variable to whitelist your email
 
 console.log('This script is deprecated. We now use Firebase Google Authentication.');
-console.log('Allowed email: polipaxrhstos@gmail.com');
+console.log('Set ALLOWED_EMAIL=your_email@gmail.com in .env.local and Vercel');

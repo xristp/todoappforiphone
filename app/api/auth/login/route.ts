@@ -54,9 +54,21 @@ export async function POST(request: Request) {
     const allowedEmail = (process.env.ALLOWED_EMAIL || '').trim().toLowerCase();
     const userEmail = email.trim().toLowerCase();
     
-    console.log(`Login attempt - User: "${userEmail}" | Allowed: "${allowedEmail}" | Match: ${userEmail === allowedEmail}`);
+    console.log(`DEBUG - Raw ALLOWED_EMAIL from env: "${process.env.ALLOWED_EMAIL}"`);
+    console.log(`DEBUG - Processed allowedEmail: "${allowedEmail}"`);
+    console.log(`DEBUG - User email: "${userEmail}"`);
+    console.log(`DEBUG - Match result: ${userEmail === allowedEmail}`);
+    console.log(`DEBUG - allowedEmail is empty: ${!allowedEmail}`);
     
-    if (!allowedEmail || userEmail !== allowedEmail) {
+    if (!allowedEmail) {
+      console.error('CRITICAL: ALLOWED_EMAIL environment variable is not set!');
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+    
+    if (userEmail !== allowedEmail) {
       console.log(`Unauthorized login attempt from: ${email}`);
       return NextResponse.json(
         { error: 'Unauthorized: This account is not allowed to access this application' },

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { verifyPassword, createToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 
-// Login route - uses environment variables from Vercel
+// Login route - uses environment variables from Vercel 
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();

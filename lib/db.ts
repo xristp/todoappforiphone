@@ -1,17 +1,10 @@
-import { createClient } from '@vercel/postgres';
-
-// Create client for pooled connections (works in both dev and production)
-const client = createClient({
-  connectionString: process.env.POSTGRES_URL,
-});
-
-await client.connect();
+import { sql } from '@vercel/postgres';
 
 // Initialize database tables
 export async function initDatabase() {
   try {
     // Create users table
-    await client.sql`
+    await sql`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,

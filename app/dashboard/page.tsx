@@ -83,7 +83,13 @@ export default function DashboardPage() {
 
   const fetchCategories = async () => {
     try {
-      const res = await fetch('/api/categories');
+      const email = localStorage.getItem('userEmail');
+      if (!email) {
+        router.push('/');
+        return;
+      }
+      
+      const res = await fetch(`/api/categories?email=${encodeURIComponent(email)}`);
       if (res.ok) {
         const data = await res.json();
         setCategories(data);
@@ -106,6 +112,12 @@ export default function DashboardPage() {
       return;
     }
 
+    const email = localStorage.getItem('userEmail');
+    if (!email) {
+      router.push('/');
+      return;
+    }
+
     console.log('Creating category:', {
       name: newCategoryName,
       description: newCategoryDescription,
@@ -117,12 +129,12 @@ export default function DashboardPage() {
       const res = await fetch('/api/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           name: newCategoryName,
           description: newCategoryDescription,
           icon: selectedIcon,
           color: getColorForIcon(selectedIcon),
+          email, // Send email with request
         }),
       });
 

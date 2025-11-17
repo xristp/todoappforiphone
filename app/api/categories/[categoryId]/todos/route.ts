@@ -8,17 +8,21 @@ export async function GET(
   { params }: { params: Promise<{ categoryId: string }> }
 ) {
   try {
-    const session = await requireAuth();
-    const userEmail = session.email as string;
     const { categoryId } = await params;
+    const { searchParams } = new URL(request.url);
+    const email = searchParams.get('email');
+    
+    if (!email) {
+      return NextResponse.json({ error: 'Email required' }, { status: 400 });
+    }
 
-    await ensureUser(userEmail);
-    const todos = await getTodos(userEmail, categoryId);
+    await ensureUser(email);
+    const todos = await getTodos(email, categoryId);
 
     return NextResponse.json(todos);
   } catch (error) {
     console.error('GET /api/categories/[categoryId]/todos error:', error);
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
 
@@ -27,12 +31,14 @@ export async function POST(
   { params }: { params: Promise<{ categoryId: string }> }
 ) {
   try {
-    const session = await requireAuth();
-    const userEmail = session.email as string;
     const { categoryId } = await params;
-    const { title, notes, dueDate, priority } = await request.json();
+    const { title, notes, dueDate, priority, email } = await request.json();
+    
+    if (!email) {
+      return NextResponse.json({ error: 'Email required' }, { status: 400 });
+    }
 
-    await ensureUser(userEmail);
+    await ensureUser(email);
 
     const newTodo = {
       id: crypto.randomUUID(),
@@ -43,12 +49,12 @@ export async function POST(
       priority: priority || null,
     };
 
-    await createTodo(userEmail, categoryId, newTodo);
+    await createTodo(email, categoryId, newTodo);
 
     return NextResponse.json(newTodo);
   } catch (error) {
     console.error('POST /api/categories/[categoryId]/todos error:', error);
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
 
@@ -57,13 +63,11 @@ export async function PATCH(
   { params }: { params: Promise<{ categoryId: string }> }
 ) {
   try {
-    const session = await requireAuth();
-    const userEmail = session.email as string;
     const { categoryId } = await params;
-    const { todoId, completed, title, notes, dueDate, priority } = await request.json();
+    const { todoId, completed, title, notes, dueDate, priority, email } = await request.json();
 
-    if (!todoId) {
-      return NextResponse.json({ error: 'Todo ID required' }, { status: 400 });
+    if (!todoId || !email) {
+      return NextResponse.json({ error: 'Todo ID and email required' }, { status: 400 });
     }
 
     const updates: any = {};
@@ -73,12 +77,12 @@ export async function PATCH(
     if (dueDate !== undefined) updates.dueDate = dueDate;
     if (priority !== undefined) updates.priority = priority;
 
-    await updateTodo(userEmail, todoId, updates);
+    await updateTodo(email, todoId, updates);
 
     return NextResponse.json({ success: true, updates });
   } catch (error) {
     console.error('PATCH /api/categories/[categoryId]/todos error:', error);
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
 
@@ -87,21 +91,20 @@ export async function DELETE(
   { params }: { params: Promise<{ categoryId: string }> }
 ) {
   try {
-    const session = await requireAuth();
-    const userEmail = session.email as string;
     const { categoryId } = await params;
     const { searchParams } = new URL(request.url);
     const todoId = searchParams.get('todoId');
+    const email = searchParams.get('email');
 
-    if (!todoId) {
-      return NextResponse.json({ error: 'Todo ID required' }, { status: 400 });
+    if (!todoId || !email) {
+      return NextResponse.json({ error: 'Todo ID and email required' }, { status: 400 });
     }
 
-    await deleteTodo(userEmail, todoId);
+    await deleteTodo(email, todoId);
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('DELETE /api/categories/[categoryId]/todos error:', error);
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

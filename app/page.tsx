@@ -53,6 +53,11 @@ export default function LoginPage() {
         return;
       }
 
+      // Store user email in localStorage for API requests
+      if (data.email) {
+        localStorage.setItem('userEmail', data.email);
+      }
+
       router.push('/dashboard');
     } catch (err: any) {
       console.error('Login error:', err);

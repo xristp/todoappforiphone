@@ -2,10 +2,15 @@ import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { getCategories, createCategory, deleteCategory, ensureUser } from '@/lib/db';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const session = await requireAuth();
-    const userEmail = session.email as string;
+    // Get email from query params (sent by client after Firebase auth)
+    const { searchParams } = new URL(request.url);
+    const userEmail = searchParams.get('email');
+    
+    if (!userEmail) {
+      return NextResponse.json({ error: 'Email required' }, { status: 400 });
+    }
     
     await ensureUser(userEmail);
     const categories = await getCategories(userEmail);
@@ -13,60 +18,53 @@ export async function GET() {
     return NextResponse.json(categories);
   } catch (error) {
     console.error('GET /api/categories error:', error);
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    console.log('POST /api/categories - Starting auth check');
-    
-    const session = await requireAuth();
-    const userEmail = session.email as string;
-    console.log('POST /api/categories - Auth successful');
-    
-    await ensureUser(userEmail);
-    
     const body = await request.json();
-    const { name, icon } = body;
+    const { name, icon, email } = body;
+    
+    if (!email) {
+      return NextResponse.json({ error: 'Email required' }, { status: 400 });
+    }
 
-    console.log('POST body:', { name, icon });
+    await ensureUser(email);
 
     const newCategory = {
       id: crypto.randomUUID(),
       name,
-      color: '#E97451', // Always use orange accent color
+      color: '#E97451',
       icon: icon || '📝',
     };
 
-    await createCategory(userEmail, newCategory);
+    await createCategory(email, newCategory);
 
-    console.log('POST /api/categories - Category created:', newCategory.name);
+    console.log('POST /api/categories - Category created:', newCategory.name, 'for', email);
     return NextResponse.json(newCategory);
   } catch (error) {
-    console.log('POST /api/categories - Auth failed:', error);
-    console.log('Error details:', error instanceof Error ? error.message : String(error));
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    console.error('POST /api/categories error:', error);
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
 
 export async function DELETE(request: Request) {
   try {
-    const session = await requireAuth();
-    const userEmail = session.email as string;
-    
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    const email = searchParams.get('email');
 
-    if (!id) {
-      return NextResponse.json({ error: 'Category ID required' }, { status: 400 });
+    if (!id || !email) {
+      return NextResponse.json({ error: 'Category ID and email required' }, { status: 400 });
     }
 
-    await deleteCategory(userEmail, id);
+    await deleteCategory(email, id);
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('DELETE /api/categories error:', error);
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

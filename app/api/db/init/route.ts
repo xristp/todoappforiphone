@@ -1,13 +1,9 @@
 import { NextResponse } from 'next/server';
 import { initDatabase } from '@/lib/db';
-import { requireAuth } from '@/lib/auth';
 
-// Initialize database tables
-export async function POST() {
+// Initialize database tables - GET request, no auth required for first-time setup
+export async function GET() {
   try {
-    // Only allow authenticated admin users to init database
-    await requireAuth();
-    
     await initDatabase();
     
     return NextResponse.json({
@@ -17,8 +13,16 @@ export async function POST() {
   } catch (error) {
     console.error('Database init error:', error);
     return NextResponse.json(
-      { error: 'Failed to initialize database' },
+      { 
+        error: 'Failed to initialize database',
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     );
   }
+}
+
+// Also support POST for backwards compatibility
+export async function POST() {
+  return GET();
 }

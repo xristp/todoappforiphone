@@ -1,10 +1,15 @@
-import { sql } from '@vercel/postgres';
+import { createPool } from '@vercel/postgres';
+
+// Use pooled connection for serverless
+const pool = createPool({
+  connectionString: process.env.POSTGRES_URL,
+});
 
 // Initialize database tables
 export async function initDatabase() {
   try {
     // Create users table
-    await sql`
+    await pool.sql`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
@@ -13,7 +18,7 @@ export async function initDatabase() {
     `;
 
     // Create categories table
-    await sql`
+    await pool.sql`
       CREATE TABLE IF NOT EXISTS categories (
         id VARCHAR(50) PRIMARY KEY,
         user_email VARCHAR(255) NOT NULL REFERENCES users(email) ON DELETE CASCADE,
@@ -26,7 +31,7 @@ export async function initDatabase() {
     `;
 
     // Create todos table
-    await sql`
+    await pool.sql`
       CREATE TABLE IF NOT EXISTS todos (
         id VARCHAR(50) PRIMARY KEY,
         category_id VARCHAR(50) NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
@@ -42,9 +47,9 @@ export async function initDatabase() {
     `;
 
     // Create indexes for better query performance
-    await sql`CREATE INDEX IF NOT EXISTS idx_categories_user ON categories(user_email)`;
-    await sql`CREATE INDEX IF NOT EXISTS idx_todos_category ON todos(category_id)`;
-    await sql`CREATE INDEX IF NOT EXISTS idx_todos_user ON todos(user_email)`;
+    await pool.sql`CREATE INDEX IF NOT EXISTS idx_categories_user ON categories(user_email)`;
+    await pool.sql`CREATE INDEX IF NOT EXISTS idx_todos_category ON todos(category_id)`;
+    await pool.sql`CREATE INDEX IF NOT EXISTS idx_todos_user ON todos(user_email)`;
 
     console.log('Database initialized successfully');
     return { success: true };
@@ -57,7 +62,7 @@ export async function initDatabase() {
 // Ensure user exists in database
 export async function ensureUser(email: string) {
   try {
-    await sql`
+    await pool.sql`
       INSERT INTO users (email)
       VALUES (${email})
       ON CONFLICT (email) DO NOTHING
@@ -71,7 +76,7 @@ export async function ensureUser(email: string) {
 
 // Get all categories for a user
 export async function getCategories(userEmail: string) {
-  const { rows } = await sql`
+  const { rows } = await pool.sql`
     SELECT id, name, icon, color, created_at, updated_at
     FROM categories
     WHERE user_email = ${userEmail}
@@ -82,7 +87,7 @@ export async function getCategories(userEmail: string) {
 
 // Create a category
 export async function createCategory(userEmail: string, category: any) {
-  await sql`
+  await pool.sql`
     INSERT INTO categories (id, user_email, name, icon, color)
     VALUES (${category.id}, ${userEmail}, ${category.name}, ${category.icon}, ${category.color})
   `;
@@ -91,7 +96,7 @@ export async function createCategory(userEmail: string, category: any) {
 
 // Update a category
 export async function updateCategory(userEmail: string, categoryId: string, updates: any) {
-  await sql`
+  await pool.sql`
     UPDATE categories
     SET name = ${updates.name},
         icon = ${updates.icon},
@@ -103,7 +108,7 @@ export async function updateCategory(userEmail: string, categoryId: string, upda
 
 // Delete a category
 export async function deleteCategory(userEmail: string, categoryId: string) {
-  await sql`
+  await pool.sql`
     DELETE FROM categories
     WHERE id = ${categoryId} AND user_email = ${userEmail}
   `;
@@ -111,7 +116,7 @@ export async function deleteCategory(userEmail: string, categoryId: string) {
 
 // Get all todos for a category
 export async function getTodos(userEmail: string, categoryId: string) {
-  const { rows } = await sql`
+  const { rows } = await pool.sql`
     SELECT id, category_id, title, completed, notes, due_date, priority, created_at, updated_at
     FROM todos
     WHERE category_id = ${categoryId} AND user_email = ${userEmail}
@@ -122,7 +127,7 @@ export async function getTodos(userEmail: string, categoryId: string) {
 
 // Create a todo
 export async function createTodo(userEmail: string, categoryId: string, todo: any) {
-  await sql`
+  await pool.sql`
     INSERT INTO todos (id, category_id, user_email, title, completed, notes, due_date, priority)
     VALUES (
       ${todo.id},
@@ -169,7 +174,7 @@ export async function updateTodo(userEmail: string, todoId: string, updates: any
   // Build the SET clause dynamically
   const setClause = sets.map((col, i) => `${col} = $${i + 1}`).join(', ');
   
-  await sql.query(
+  await pool.query(
     `UPDATE todos SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE id = $${sets.length + 1} AND user_email = $${sets.length + 2}`,
     [...values, todoId, userEmail]
   );
@@ -177,7 +182,7 @@ export async function updateTodo(userEmail: string, todoId: string, updates: any
 
 // Delete a todo
 export async function deleteTodo(userEmail: string, todoId: string) {
-  await sql`
+  await pool.sql`
     DELETE FROM todos
     WHERE id = ${todoId} AND user_email = ${userEmail}
   `;

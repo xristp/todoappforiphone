@@ -27,10 +27,14 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, icon, email } = body;
     
+    console.log('POST /api/categories - received:', { name, icon, email });
+    
     if (!email) {
+      console.error('Missing email in request');
       return NextResponse.json({ error: 'Email required' }, { status: 400 });
     }
 
+    console.log('Ensuring user exists:', email);
     await ensureUser(email);
 
     const newCategory = {
@@ -40,13 +44,18 @@ export async function POST(request: Request) {
       icon: icon || '📝',
     };
 
+    console.log('Creating category:', newCategory);
     await createCategory(email, newCategory);
 
     console.log('POST /api/categories - Category created:', newCategory.name, 'for', email);
     return NextResponse.json(newCategory);
   } catch (error) {
     console.error('POST /api/categories error:', error);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    return NextResponse.json({ 
+      error: 'Server error',
+      details: error instanceof Error ? error.message : String(error)
+    }, { status: 500 });
   }
 }
 

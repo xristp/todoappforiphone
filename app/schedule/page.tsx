@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, MapPin, User, Filter } from 'lucide-react';
-import scheduleData from '../../data/schedule.json';
+import { scheduleData } from '../../lib/schedule';
 
 interface ClassItem {
   id: string;

@@ -240,7 +240,7 @@ export default function QuickPeekTodo({
               transition: 'all 0.3s ease'
             }}
           >
-            {todo.text}
+            {todo.title}
           </p>
           <div className="flex items-center gap-1.5 text-xs">
             <span style={{ color: 'var(--text-tertiary)', opacity: 0.7 }}>
@@ -251,6 +251,15 @@ export default function QuickPeekTodo({
                 <span style={{ color: 'var(--text-tertiary)', opacity: 0.5 }}>•</span>
                 <span style={{ color: accentColor, opacity: 0.8 }}>
                   {formatDueDate(todo.dueDate)}
+                  {todo.dueTime && ` at ${todo.dueTime}`}
+                </span>
+              </>
+            )}
+            {todo.assignedTo && (
+              <>
+                <span style={{ color: 'var(--text-tertiary)', opacity: 0.5 }}>•</span>
+                <span style={{ color: 'var(--text-secondary)', opacity: 0.7 }}>
+                  with {todo.assignedTo}
                 </span>
               </>
             )}

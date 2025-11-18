@@ -11,8 +11,8 @@ const ALLOWED_EMAIL = (process.env.ALLOWED_EMAIL || '').trim().toLowerCase();
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Protect dashboard routes
-  if (pathname.startsWith('/dashboard')) {
+  // Protect dashboard and schedule routes
+  if (pathname.startsWith('/dashboard') || pathname.startsWith('/schedule')) {
     const token = request.cookies.get('auth-token');
 
     if (!token) {
@@ -40,5 +40,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*'],
+  matcher: ['/dashboard/:path*', '/schedule/:path*'],
 };

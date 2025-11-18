@@ -17,6 +17,12 @@ export function useTodoActions(
   const toggleTodo = async (categoryId: string, todoId: string) => {
     setIsLoading(true);
     
+    const email = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
+    if (!email) {
+      setIsLoading(false);
+      return;
+    }
+
     // Find the current todo state
     const category = categories.find(c => c.id === categoryId);
     const todo = category?.todos.find(t => t.id === todoId);
@@ -43,6 +49,7 @@ export function useTodoActions(
         body: JSON.stringify({
           todoId: todoId,
           completed: !todo.completed,
+          email
         }),
       });
 
@@ -66,6 +73,12 @@ export function useTodoActions(
   const archiveTodo = async (categoryId: string, todoId: string) => {
     setIsLoading(true);
 
+    const email = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
+    if (!email) {
+      setIsLoading(false);
+      return;
+    }
+
     // Optimistic update
     const updatedCategories = categories.map(cat =>
       cat.id === categoryId
@@ -87,6 +100,7 @@ export function useTodoActions(
         body: JSON.stringify({
           todoId: todoId,
           archived: true,
+          email
         }),
       });
 
@@ -114,6 +128,12 @@ export function useTodoActions(
   ) => {
     setIsLoading(true);
 
+    const email = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
+    if (!email) {
+      setIsLoading(false);
+      return;
+    }
+
     // Optimistic update
     const updatedCategories = categories.map(cat =>
       cat.id === categoryId
@@ -134,6 +154,7 @@ export function useTodoActions(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           todoId: todoId,
+          email,
           ...updates,
         }),
       });

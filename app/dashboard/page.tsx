@@ -92,7 +92,25 @@ export default function DashboardPage() {
       const res = await fetch(`/api/categories?email=${encodeURIComponent(email)}`);
       if (res.ok) {
         const data = await res.json();
-        setCategories(data);
+        
+        // Fetch todos for each category
+        const categoriesWithTodos = await Promise.all(
+          data.map(async (cat: Category) => {
+            try {
+              const todosRes = await fetch(`/api/categories/${cat.id}/todos?email=${encodeURIComponent(email)}`);
+              if (todosRes.ok) {
+                const todos = await todosRes.json();
+                return { ...cat, todos };
+              }
+              return { ...cat, todos: [] };
+            } catch (error) {
+              console.error(`Failed to fetch todos for category ${cat.id}:`, error);
+              return { ...cat, todos: [] };
+            }
+          })
+        );
+        
+        setCategories(categoriesWithTodos);
       }
     } catch (error) {
       console.error('Failed to fetch categories:', error);
@@ -143,7 +161,7 @@ export default function DashboardPage() {
       if (res.ok) {
         const newCategory = await res.json();
         console.log('Category created:', newCategory);
-        setCategories([...categories, newCategory]);
+        setCategories([...categories, { ...newCategory, todos: [] }]);
         setNewCategoryName('');
         setNewCategoryDescription('');
         setShowNewCategory(false);
@@ -163,10 +181,12 @@ export default function DashboardPage() {
     e.stopPropagation();
     if (!confirm('Are you sure you want to delete this category?')) return;
 
+    const email = localStorage.getItem('userEmail');
+    if (!email) return;
+
     try {
-      const res = await fetch(`/api/categories?id=${id}`, { 
-        method: 'DELETE',
-        credentials: 'include'
+      const res = await fetch(`/api/categories?id=${id}&email=${encodeURIComponent(email)}`, { 
+        method: 'DELETE'
       });
       if (res.ok) {
         setCategories(categories.filter(cat => cat.id !== id));
@@ -348,9 +368,8 @@ export default function DashboardPage() {
                     cat.todos
                       .filter(todo => 
                         !todo.archived &&
-                        (todo.text.toLowerCase().includes(searchLower) ||
+                        (todo.title.toLowerCase().includes(searchLower) ||
                         todo.notes?.toLowerCase().includes(searchLower) ||
-                        todo.assignedTo?.toLowerCase().includes(searchLower) ||
                         cat.name.toLowerCase().includes(searchLower))
                       )
                       .map(todo => ({ ...todo, categoryName: cat.name, categoryIcon: cat.icon, categoryId: cat.id }))
@@ -753,16 +772,21 @@ function CategoryDetailModal({
   const handleAddTodo = async () => {
     if (!newTodoText.trim()) return;
 
+    const email = localStorage.getItem('userEmail');
+    if (!email) return;
+
     try {
       const res = await fetch(`/api/categories/${category.id}/todos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          text: newTodoText,
+          title: newTodoText,
           notes: newTodoNotes,
           dueDate: newTodoDueDate || undefined,
           dueTime: newTodoDueTime || undefined,
-          assignedTo: newTodoAssignedTo || undefined
+          assignedTo: newTodoAssignedTo || undefined,
+          priority: undefined,
+          email
         }),
       });
 
@@ -860,14 +884,20 @@ function CategoryDetailModal({
   };
 
   const handleDuplicateTodo = async (todo: any) => {
+    const email = localStorage.getItem('userEmail');
+    if (!email) return;
+
     try {
       const res = await fetch(`/api/categories/${category.id}/todos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          text: todo.text + ' (Copy)',
+          title: todo.title + ' (Copy)',
           notes: todo.notes,
-          dueDate: todo.dueDate
+          dueDate: todo.dueDate,
+          dueTime: todo.dueTime,
+          assignedTo: todo.assignedTo,
+          email
         }),
       });
 
@@ -887,9 +917,12 @@ function CategoryDetailModal({
   const handleEditTodo = async (todoId: string) => {
     if (!editText.trim()) return;
     
+    const email = localStorage.getItem('userEmail');
+    if (!email) return;
+
     try {
       const updates: any = { 
-        text: editText,
+        title: editText,
         notes: editNotes || undefined,
         dueDate: editDueDate || undefined,
         dueTime: editDueTime || undefined,
@@ -899,7 +932,7 @@ function CategoryDetailModal({
       const res = await fetch(`/api/categories/${category.id}/todos`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ todoId, ...updates }),
+        body: JSON.stringify({ todoId, email, ...updates }),
       });
 
       if (res.ok) {
@@ -1239,7 +1272,7 @@ function CategoryDetailModal({
                                   opacity: todo.completed ? 0.5 : 1,
                                 }}
                               >
-                                {todo.text}
+                                {todo.title}
                               </span>
                               {todo.dueDate && (
                                 <span 
@@ -1301,7 +1334,7 @@ function CategoryDetailModal({
                           onClick={(e) => {
                             e.stopPropagation();
                             setEditingTodo(todo.id);
-                            setEditText(todo.text);
+                            setEditText(todo.title);
                             setEditNotes(todo.notes || '');
                             setEditDueDate(todo.dueDate || '');
                             setEditDueTime(todo.dueTime || '');

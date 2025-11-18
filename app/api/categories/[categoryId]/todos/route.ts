@@ -32,7 +32,7 @@ export async function POST(
 ) {
   try {
     const { categoryId } = await params;
-    const { title, notes, dueDate, priority, email } = await request.json();
+    const { title, notes, dueDate, dueTime, assignedTo, priority, email } = await request.json();
     
     if (!email) {
       return NextResponse.json({ error: 'Email required' }, { status: 400 });
@@ -46,6 +46,8 @@ export async function POST(
       completed: false,
       notes: notes || null,
       dueDate: dueDate || null,
+      dueTime: dueTime || null,
+      assignedTo: assignedTo || null,
       priority: priority || null,
     };
 
@@ -64,7 +66,7 @@ export async function PATCH(
 ) {
   try {
     const { categoryId } = await params;
-    const { todoId, completed, title, notes, dueDate, priority, email } = await request.json();
+    const { todoId, completed, title, notes, dueDate, dueTime, assignedTo, priority, email } = await request.json();
 
     if (!todoId || !email) {
       return NextResponse.json({ error: 'Todo ID and email required' }, { status: 400 });
@@ -75,6 +77,8 @@ export async function PATCH(
     if (title !== undefined) updates.title = title;
     if (notes !== undefined) updates.notes = notes;
     if (dueDate !== undefined) updates.dueDate = dueDate;
+    if (dueTime !== undefined) updates.dueTime = dueTime;
+    if (assignedTo !== undefined) updates.assignedTo = assignedTo;
     if (priority !== undefined) updates.priority = priority;
 
     await updateTodo(email, todoId, updates);

@@ -99,7 +99,7 @@ export default function SearchResultItem({
               textDecoration: todo.completed ? 'line-through' : 'none'
             }}
           >
-            {todo.text}
+            {todo.title}
           </p>
           <div className="flex items-center gap-1.5 text-xs flex-wrap">
             <span style={{ color: 'var(--text-tertiary)', opacity: 0.7 }}>

@@ -1,55 +1,33 @@
-import { createPool } from '@vercel/postgres';
+import { MongoClient, Db } from 'mongodb';
 
-// Use pooled connection for serverless
-const pool = createPool({
-  connectionString: process.env.POSTGRES_URL,
-});
+const uri = process.env.MONGODB_URI || '';
+let cachedClient: MongoClient | null = null;
+let cachedDb: Db | null = null;
 
-// Initialize database tables
+async function connectToDatabase() {
+  if (cachedClient && cachedDb) {
+    return { client: cachedClient, db: cachedDb };
+  }
+
+  const client = await MongoClient.connect(uri);
+  const db = client.db('todoapp');
+
+  cachedClient = client;
+  cachedDb = db;
+
+  return { client, db };
+}
+
+// Initialize database (create indexes)
 export async function initDatabase() {
   try {
-    // Create users table
-    await pool.sql`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
-
-    // Create categories table
-    await pool.sql`
-      CREATE TABLE IF NOT EXISTS categories (
-        id VARCHAR(50) PRIMARY KEY,
-        user_email VARCHAR(255) NOT NULL REFERENCES users(email) ON DELETE CASCADE,
-        name VARCHAR(255) NOT NULL,
-        icon VARCHAR(50) NOT NULL,
-        color VARCHAR(50) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
-
-    // Create todos table
-    await pool.sql`
-      CREATE TABLE IF NOT EXISTS todos (
-        id VARCHAR(50) PRIMARY KEY,
-        category_id VARCHAR(50) NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
-        user_email VARCHAR(255) NOT NULL REFERENCES users(email) ON DELETE CASCADE,
-        title TEXT NOT NULL,
-        completed BOOLEAN DEFAULT FALSE,
-        notes TEXT,
-        due_date VARCHAR(50),
-        priority VARCHAR(20),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
-
-    // Create indexes for better query performance
-    await pool.sql`CREATE INDEX IF NOT EXISTS idx_categories_user ON categories(user_email)`;
-    await pool.sql`CREATE INDEX IF NOT EXISTS idx_todos_category ON todos(category_id)`;
-    await pool.sql`CREATE INDEX IF NOT EXISTS idx_todos_user ON todos(user_email)`;
+    const { db } = await connectToDatabase();
+    
+    // Create indexes
+    await db.collection('users').createIndex({ email: 1 }, { unique: true });
+    await db.collection('categories').createIndex({ user_email: 1 });
+    await db.collection('todos').createIndex({ category_id: 1 });
+    await db.collection('todos').createIndex({ user_email: 1 });
 
     console.log('Database initialized successfully');
     return { success: true };
@@ -62,11 +40,12 @@ export async function initDatabase() {
 // Ensure user exists in database
 export async function ensureUser(email: string) {
   try {
-    await pool.sql`
-      INSERT INTO users (email)
-      VALUES (${email})
-      ON CONFLICT (email) DO NOTHING
-    `;
+    const { db } = await connectToDatabase();
+    await db.collection('users').updateOne(
+      { email },
+      { $setOnInsert: { email, created_at: new Date() } },
+      { upsert: true }
+    );
     return { success: true };
   } catch (error) {
     console.error('Error ensuring user:', error);
@@ -76,114 +55,87 @@ export async function ensureUser(email: string) {
 
 // Get all categories for a user
 export async function getCategories(userEmail: string) {
-  const { rows } = await pool.sql`
-    SELECT id, name, icon, color, created_at, updated_at
-    FROM categories
-    WHERE user_email = ${userEmail}
-    ORDER BY created_at ASC
-  `;
-  return rows;
+  const { db } = await connectToDatabase();
+  const categories = await db.collection('categories')
+    .find({ user_email: userEmail })
+    .sort({ created_at: 1 })
+    .toArray();
+  return categories;
 }
 
 // Create a category
 export async function createCategory(userEmail: string, category: any) {
-  await pool.sql`
-    INSERT INTO categories (id, user_email, name, icon, color)
-    VALUES (${category.id}, ${userEmail}, ${category.name}, ${category.icon}, ${category.color})
-  `;
+  const { db } = await connectToDatabase();
+  await db.collection('categories').insertOne({
+    ...category,
+    user_email: userEmail,
+    created_at: new Date(),
+    updated_at: new Date()
+  });
   return category;
 }
 
 // Update a category
 export async function updateCategory(userEmail: string, categoryId: string, updates: any) {
-  await pool.sql`
-    UPDATE categories
-    SET name = ${updates.name},
-        icon = ${updates.icon},
-        color = ${updates.color},
-        updated_at = CURRENT_TIMESTAMP
-    WHERE id = ${categoryId} AND user_email = ${userEmail}
-  `;
+  const { db } = await connectToDatabase();
+  await db.collection('categories').updateOne(
+    { id: categoryId, user_email: userEmail },
+    { $set: { ...updates, updated_at: new Date() } }
+  );
 }
 
 // Delete a category
 export async function deleteCategory(userEmail: string, categoryId: string) {
-  await pool.sql`
-    DELETE FROM categories
-    WHERE id = ${categoryId} AND user_email = ${userEmail}
-  `;
+  const { db } = await connectToDatabase();
+  await db.collection('categories').deleteOne({ id: categoryId, user_email: userEmail });
+  await db.collection('todos').deleteMany({ category_id: categoryId, user_email: userEmail });
 }
 
 // Get all todos for a category
 export async function getTodos(userEmail: string, categoryId: string) {
-  const { rows } = await pool.sql`
-    SELECT id, category_id, title, completed, notes, due_date, priority, created_at, updated_at
-    FROM todos
-    WHERE category_id = ${categoryId} AND user_email = ${userEmail}
-    ORDER BY created_at DESC
-  `;
-  return rows;
+  const { db } = await connectToDatabase();
+  const todos = await db.collection('todos')
+    .find({ category_id: categoryId, user_email: userEmail })
+    .sort({ created_at: -1 })
+    .toArray();
+  return todos;
 }
 
 // Create a todo
 export async function createTodo(userEmail: string, categoryId: string, todo: any) {
-  await pool.sql`
-    INSERT INTO todos (id, category_id, user_email, title, completed, notes, due_date, priority)
-    VALUES (
-      ${todo.id},
-      ${categoryId},
-      ${userEmail},
-      ${todo.title},
-      ${todo.completed || false},
-      ${todo.notes || null},
-      ${todo.dueDate || null},
-      ${todo.priority || null}
-    )
-  `;
+  const { db } = await connectToDatabase();
+  await db.collection('todos').insertOne({
+    ...todo,
+    category_id: categoryId,
+    user_email: userEmail,
+    completed: todo.completed || false,
+    created_at: new Date(),
+    updated_at: new Date()
+  });
   return todo;
 }
 
 // Update a todo
 export async function updateTodo(userEmail: string, todoId: string, updates: any) {
-  const sets = [];
-  const values = [];
-
-  if (updates.title !== undefined) {
-    sets.push('title');
-    values.push(updates.title);
-  }
-  if (updates.completed !== undefined) {
-    sets.push('completed');
-    values.push(updates.completed);
-  }
-  if (updates.notes !== undefined) {
-    sets.push('notes');
-    values.push(updates.notes);
-  }
-  if (updates.dueDate !== undefined) {
-    sets.push('due_date');
-    values.push(updates.dueDate);
-  }
-  if (updates.priority !== undefined) {
-    sets.push('priority');
-    values.push(updates.priority);
-  }
-
-  if (sets.length === 0) return;
-
-  // Build the SET clause dynamically
-  const setClause = sets.map((col, i) => `${col} = $${i + 1}`).join(', ');
+  const { db } = await connectToDatabase();
   
-  await pool.query(
-    `UPDATE todos SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE id = $${sets.length + 1} AND user_email = $${sets.length + 2}`,
-    [...values, todoId, userEmail]
+  const updateData: any = { updated_at: new Date() };
+  if (updates.title !== undefined) updateData.title = updates.title;
+  if (updates.completed !== undefined) updateData.completed = updates.completed;
+  if (updates.notes !== undefined) updateData.notes = updates.notes;
+  if (updates.dueDate !== undefined) updateData.dueDate = updates.dueDate;
+  if (updates.dueTime !== undefined) updateData.dueTime = updates.dueTime;
+  if (updates.assignedTo !== undefined) updateData.assignedTo = updates.assignedTo;
+  if (updates.priority !== undefined) updateData.priority = updates.priority;
+
+  await db.collection('todos').updateOne(
+    { id: todoId, user_email: userEmail },
+    { $set: updateData }
   );
 }
 
 // Delete a todo
 export async function deleteTodo(userEmail: string, todoId: string) {
-  await pool.sql`
-    DELETE FROM todos
-    WHERE id = ${todoId} AND user_email = ${userEmail}
-  `;
+  const { db } = await connectToDatabase();
+  await db.collection('todos').deleteOne({ id: todoId, user_email: userEmail });
 }

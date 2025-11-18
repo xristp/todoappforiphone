@@ -1,13 +1,13 @@
 export interface Todo {
   id: string;
-  text: string;
+  title: string;
   completed: boolean;
-  createdAt: string;
+  createdAt?: string;
   dueDate?: string;
   dueTime?: string;
   notes?: string;
   archived?: boolean;
-  order?: number;
+  priority?: string;
   assignedTo?: string;
 }
 

@@ -1,7 +1,8 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Database, LogOut } from 'lucide-react';
+import { Search, Database, LogOut, Calendar } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface TopNavbarProps {
   showSearch: boolean;
@@ -22,6 +23,8 @@ export default function TopNavbar({
   onLogoutToggle,
   onLogout,
 }: TopNavbarProps) {
+  const router = useRouter();
+
   return (
     <motion.nav
       initial={{ y: -20, opacity: 0 }}
@@ -45,6 +48,21 @@ export default function TopNavbar({
           }}
         >
           <Search className="w-4 h-4" />
+        </motion.button>
+        
+        {/* Schedule Button */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => router.push('/schedule')}
+          className="flex items-center gap-2 p-2.5 rounded-full transition-all"
+          style={{ 
+            color: 'var(--text-secondary)',
+            background: 'rgba(255, 255, 255, 0.05)'
+          }}
+          title="Weekly Schedule"
+        >
+          <Calendar className="w-4 h-4" />
         </motion.button>
         
         {/* Data Manager Button */}

@@ -31,7 +31,7 @@ export default function SearchBar({
   const resultCount = categories.flatMap(cat => 
     cat.todos.filter(todo => 
       !todo.archived &&
-      (todo.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (todo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       todo.notes?.toLowerCase().includes(searchQuery.toLowerCase()))
     )
   ).length;

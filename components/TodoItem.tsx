@@ -19,12 +19,12 @@ interface TodoItemProps {
 export default function TodoItem({ todo, accentColor, onToggle, onDelete, onUpdate, onDuplicate, onArchive }: TodoItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editText, setEditText] = useState(todo.text);
+  const [editText, setEditText] = useState(todo.title);
   const [editNotes, setEditNotes] = useState(todo.notes || '');
   const [editDueDate, setEditDueDate] = useState(todo.dueDate || '');
 
   const handleSave = () => {
-    onUpdate({ text: editText, notes: editNotes || undefined, dueDate: editDueDate || undefined });
+    onUpdate({ title: editText, notes: editNotes || undefined, dueDate: editDueDate || undefined });
     setIsEditing(false);
   };
 
@@ -63,7 +63,7 @@ export default function TodoItem({ todo, accentColor, onToggle, onDelete, onUpda
             <>
               <div className='flex items-start justify-between gap-2'>
                 <div className='flex-1'>
-                  <p className='transition-all text-sm' style={{ color: todo.completed ? 'var(--text-tertiary)' : 'var(--text-primary)', textDecoration: todo.completed ? 'line-through' : 'none', opacity: todo.completed ? 0.5 : 1 }}>{todo.text}</p>
+                  <p className='transition-all text-sm' style={{ color: todo.completed ? 'var(--text-tertiary)' : 'var(--text-primary)', textDecoration: todo.completed ? 'line-through' : 'none', opacity: todo.completed ? 0.5 : 1 }}>{todo.title}</p>
                   {dueDateInfo && <div className='flex items-center gap-1.5 mt-1.5'><Calendar className='w-3.5 h-3.5' style={{ color: dueDateInfo.color }} /><span className='text-xs font-medium' style={{ color: dueDateInfo.color }}>{dueDateInfo.text}</span>{dueDateInfo.urgent && !todo.completed && <AlertCircle className='w-3.5 h-3.5' style={{ color: dueDateInfo.color }} />}</div>}
                 </div>
                 {hasNotes && <button onClick={() => setIsExpanded(!isExpanded)} className='p-1 rounded hover:bg-white hover:bg-opacity-5' style={{ color: 'var(--text-tertiary)' }}>{isExpanded ? <ChevronUp className='w-4 h-4' /> : <ChevronDown className='w-4 h-4' />}</button>}

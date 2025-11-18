@@ -28,37 +28,86 @@ export default function LoginPage() {
     try {
       // Dynamic import to avoid SSR issues
       const firebaseModule = await import('@/lib/firebaseClient');
-      const { signInWithPopup } = await import('firebase/auth');
+      const { signInWithPopup, signInWithRedirect, getRedirectResult } = await import('firebase/auth');
 
       if (!firebaseModule.auth || !firebaseModule.googleProvider) {
         throw new Error('Firebase not configured');
       }
 
-      // Sign in with Google popup
-      const result = await signInWithPopup(firebaseModule.auth, firebaseModule.googleProvider);
-      const idToken = await result.user.getIdToken();
+      // Check if this is a redirect result first
+      try {
+        const redirectResult = await getRedirectResult(firebaseModule.auth);
+        if (redirectResult) {
+          const idToken = await redirectResult.user.getIdToken();
+          // Send token to our API to create session
+          const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken }),
+          });
 
-      // Send token to our API to create session
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-      });
+          const data = await res.json();
 
-      const data = await res.json();
+          if (!res.ok) {
+            setError(data.error || 'Login failed');
+            setLoading(false);
+            return;
+          }
 
-      if (!res.ok) {
-        setError(data.error || 'Login failed');
-        setLoading(false);
-        return;
+          // Store user email in localStorage for API requests
+          if (data.email) {
+            localStorage.setItem('userEmail', data.email);
+          }
+
+          router.push('/dashboard');
+          return;
+        }
+      } catch (redirectError) {
+        // Not a redirect result, continue with popup
       }
 
-      // Store user email in localStorage for API requests
-      if (data.email) {
-        localStorage.setItem('userEmail', data.email);
-      }
+      // Try popup first
+      try {
+        const result = await signInWithPopup(firebaseModule.auth, firebaseModule.googleProvider);
+        const idToken = await result.user.getIdToken();
 
-      router.push('/dashboard');
+        // Send token to our API to create session
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          setError(data.error || 'Login failed');
+          setLoading(false);
+          return;
+        }
+
+        // Store user email in localStorage for API requests
+        if (data.email) {
+          localStorage.setItem('userEmail', data.email);
+        }
+
+        router.push('/dashboard');
+      } catch (popupError: any) {
+        console.warn('Popup blocked or failed, trying redirect:', popupError);
+
+        // If popup fails (likely blocked), fall back to redirect
+        if (popupError.code === 'auth/popup-blocked' ||
+            popupError.code === 'auth/popup-closed-by-user' ||
+            popupError.message.includes('popup') ||
+            /popup|blocked/i.test(popupError.message)) {
+
+          setError('Popup was blocked. Redirecting to Google...');
+          await signInWithRedirect(firebaseModule.auth, firebaseModule.googleProvider);
+          // The page will redirect and come back, handled by getRedirectResult above
+        } else {
+          throw popupError;
+        }
+      }
     } catch (err: any) {
       console.error('Login error:', err);
       setError(err.message || 'Sign in cancelled or failed');

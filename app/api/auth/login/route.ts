@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createToken } from '@/lib/auth';
-import { cookies } from 'next/headers';
 import { getAuth } from 'firebase-admin/auth';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 
@@ -82,8 +81,8 @@ export async function POST(request: Request) {
     const token = await createToken(email);
 
     // Set cookie - keep logged in for 90 days
-    const cookieStore = await cookies();
-    cookieStore.set('auth-token', token, {
+    const response = NextResponse.json({ success: true, email });
+    response.cookies.set('auth-token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -91,7 +90,7 @@ export async function POST(request: Request) {
       path: '/',
     });
 
-    return NextResponse.json({ success: true, email });
+    return response;
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(
